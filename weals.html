@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Place Autocomplete and Directions</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="weals.css">
+</head>
+
+<body>
+	<div class="weals_container">
+		<div id="map_container" class="map_container"></div>
+
+	    <div class="address_container" style="display: none">
+	    	<table id="address_table">
+	    		<tr>
+	    			<td class="address_label">Original Localtion: </td>	
+	    			<td><input id="origin-input" class="controls" type="text"></input></td>
+	    		</tr>
+	    		<tr>
+	    			<td class="address_label">Destination Localtion: </td>	
+	    			<td><input id="destination-input" class="controls" type="text"></input></td>
+	    		</tr>
+	    		<tr>
+	    			<td class="address_label">Total Distance: </td>	
+	    			<td><span id="total_distance" style="padding-left: 25px"></span></td>
+	    		</tr>
+	    		<tr>
+	    			<td class="address_label">Total Duration: </td>	
+	    			<td><span id="total_duration" style="padding-left: 25px"></span></td>
+	    		</tr>
+	    	</table>
+	    </div>
+
+	    <div id="weals_roads">
+
+	    </div>
+	</div>
+
+
+    <script>
+
+    // This example requires the Places library. Include the libraries=places
+    // parameter when you first load the API. For example:
+    // <script
+    // src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
+
+    
+    var marker;
+    function initMap() {
+    	var map_container = document.getElementById('map_container');
+        var map = new google.maps.Map(map_container, {
+        	mapTypeId: google.maps.MapTypeId.ROADMAP,
+        	zoomControl: false,
+            mapTypeControl: false,
+		    fullscreenControl: false,
+		    overviewMapControl: false,
+            zoom: 17
+        });
+
+		if(navigator.geolocation) {
+          	navigator.geolocation.getCurrentPosition(
+          	//navigator.geolocation.watchPosition(
+          		function(position) {
+	            	var pos = {
+		            	lat: position.coords.latitude,
+		              	lng: position.coords.longitude
+		            };
+		            map.setCenter(pos);
+
+		            marker = new google.maps.Marker({ 
+		            	map: map,
+		            	draggable: true,
+		            	animation: google.maps.Animation.DROP, 
+		            	position: pos
+		            });
+		            getFormatAddress(pos);
+
+		            marker.addListener("dragend", function(result){
+		            	getFormatAddress(result.latLng);
+		            });
+	          	}, function() {
+	          		// error message
+	          });
+        } else {
+        	// error message
+        }
+
+        new AutocompleteDirectionsHandler(map);
+    }
+
+    /**
+     * @constructor
+     */
+    function AutocompleteDirectionsHandler(map) {
+        this.map = map;
+        this.originPlaceId = null;
+        this.destinationPlaceId = null;
+        this.directionsService = new google.maps.DirectionsService;
+        this.directionsRenderer = new google.maps.DirectionsRenderer;
+        this.directionsRenderer.setMap(map);
+        this.directionsRenderer.setPanel(document.getElementById("weals_roads"));
+
+        var address_table = document.getElementById('address_table');
+        var originInput = document.getElementById('origin-input');
+        var destinationInput = document.getElementById('destination-input');
+
+        var originAutocomplete = new google.maps.places.Autocomplete(originInput);
+        // Specify just the place data fields that you need.
+        originAutocomplete.setFields(['place_id', 'geometry']);
+
+        var destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput);
+        // Specify just the place data fields that you need.
+        destinationAutocomplete.setFields(['place_id']);
+
+        this.setupPlaceChangedListener(originAutocomplete, 'ORIG');
+        this.setupPlaceChangedListener(destinationAutocomplete, 'DEST');
+
+        this.map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(address_table);
+    }
+
+    AutocompleteDirectionsHandler.prototype.setupPlaceChangedListener = function(autocomplete, mode) {
+        var me = this;
+        autocomplete.bindTo('bounds', this.map);
+
+        autocomplete.addListener('place_changed', function() {
+            var place = autocomplete.getPlace();
+            if (!place.place_id) {
+                return;
+            }
+
+            if (mode === 'ORIG') {
+                me.originPlaceId = place.place_id;
+                var pos = place.geometry.location;
+                me.map.setCenter(pos);
+                marker.setPosition(pos);
+	            getFormatAddress(pos);
+
+	            marker.addListener("dragend", function(result){
+	            	getFormatAddress(result.latLng);
+	            });
+            } else {
+                me.destinationPlaceId = place.place_id;
+            }
+            me.route();
+        });
+    };
+
+    AutocompleteDirectionsHandler.prototype.route = function() {
+        var me = this;
+
+        if (!this.originPlaceId || !this.destinationPlaceId) {
+            return;
+        }
+
+        this.directionsService.route({
+                origin: { 'placeId': this.originPlaceId },
+                destination: { 'placeId': this.destinationPlaceId },
+            	/*waypoints: [{
+                        location: "天府广场，成都"
+                    },
+                ],
+                */
+                travelMode: 'DRIVING'
+            },
+            function(response, status) {
+                if (status === 'OK') {
+                	response.routes[0].copyrights = "";
+                    me.directionsRenderer.setDirections(response);
+                    me.computeTotalDistance();
+                }
+            });
+    };
+
+    AutocompleteDirectionsHandler.prototype.computeTotalDistance = function() {
+    	var me = this;
+        var myroute = me.directionsRenderer.getDirections().routes[0];
+
+        if(myroute.legs.length == 1) {
+        	document.getElementById("total_distance").innerHTML = myroute.legs[0].distance.text;
+        	document.getElementById("total_duration").innerHTML = myroute.legs[0].duration.text;
+        }
+        else {
+        	var total_distance = 0;
+    		var total_duration = 0;	
+    		for (var i = 0; i < myroute.legs.length; i++) {
+	            total_distance += myroute.legs[i].distance.value;
+	            total_duration += myroute.legs[i].duration.value; 
+	        }
+	        total_distance = total_distance / 1000;
+	        total_duration = total_duration / 60;
+       		document.getElementById("total_distance").innerHTML = total_distance.toFixed(2) + " km";
+       		document.getElementById("total_duration").innerHTML = total_distance.toFixed(2) + " mins";
+        }
+    }
+
+    function getFormatAddress(position) {
+    	var geocoder = new google.maps.Geocoder();
+        geocoder.geocode(
+        	{location: position}, 
+        	function(results, status) {
+        	if(status === "OK" && results[0]) {
+console.log(results[0]);       
+        		document.getElementById("origin-input").value = results[0].formatted_address;	
+        	}
+        });	
+    }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDh98e-HWOW41UNpUWa3xGFnzBzRNZ4ulE&libraries=places&callback=initMap" async defer></script>
+</body>
+
+</html>

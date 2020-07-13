@@ -1,0 +1,69 @@
+body {
+  background-color: black;
+}
+
+.weals_container {
+    width: 1000px;
+    margin: 20px auto;
+    position: relative;
+}
+
+
+.weals_container .map_container table {
+    background-color: #ffffff;
+    width: 100%;
+    font-size: 16px;
+    z-index: 1000 !important;
+}
+
+.weals_container .map_container table td {
+    line-height: 50px;
+}
+
+.weals_container .map_container .address_label {
+    width: 175px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.weals_container .map_container .controls {
+    margin-top: 10px;
+    border: 1px solid transparent;
+    border-radius: 2px 0 0 2px;
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    height: 32px;
+    outline: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.weals_container .map_container #origin-input,
+.weals_container .map_container #destination-input {
+    background-color: #ffffff;
+    font-size: 15px;
+    font-weight: 300;
+    margin-left: 12px;
+    padding: 0 11px 0 13px;
+    text-overflow: ellipsis;
+    width: 280px;
+}
+
+.weals_container .map_container #origin-input:focus,
+.weals_container .map_container #destination-input:focus {
+    border-color: #4d90fe;
+}
+
+.weals_container .map_container {
+    width: 500px;
+    height: 600px;
+    position: relative;
+    float: left;
+}
+
+.weals_container #weals_roads {
+  position: relative;
+  width: 400px;
+  min-height: 600px;
+  background-color: #ffffff;
+  float: right;
+}
